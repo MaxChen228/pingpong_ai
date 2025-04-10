@@ -1,0 +1,18 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# 虛擬環境
+venv/
+
+# 模型檔案與中繼檔
+*.pth
+checkpoints/
+runs/
+plots/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code 編輯器垃圾
+.vscode/
