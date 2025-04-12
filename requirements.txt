@@ -20,7 +20,7 @@ networkx==3.2.1
 numpy==2.0.2
 packaging==24.2
 pillow==11.1.0
-protobuf==6.30.2
+protobuf==4.25.3
 pygame==2.6.1
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
