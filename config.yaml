@@ -22,10 +22,10 @@ train:
   min_epsilon: 0.05
   render_every: 500
   save_every: 500
-  checkpoint_path: "checkpoints/model_ep2399_20250412_090339.pth"
+  checkpoint_path: "checkpoints/model_ep1799.pth"
   load_model: true
 
 test:
-  model_path: "checkpoints/model_ep2399_20250412_090339.pth"
+  model_path: "checkpoints/model_ep1799.pth"
   render: true
   episodes: 10

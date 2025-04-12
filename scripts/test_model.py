@@ -1,4 +1,4 @@
-# test_model.py - 根據 config.yaml 載入指定模型並測試其表現
+# test_model.py - 測試模型並以更美觀、可調的視窗顯示
 
 import os
 import sys
@@ -24,15 +24,28 @@ model_path = test_cfg['model_path']
 render = test_cfg['render']
 episodes = test_cfg['episodes']
 
+# 可視化樣式設定
+THEME = {
+    "bg": (20, 20, 30),            # 背景色
+    "ball": (255, 100, 100),        # 球顏色
+    "paddle": (100, 255, 100),      # 擋板顏色
+    "text": (255, 255, 100),        # 文字顏色
+    "font": "Courier New",
+    "font_size": 20
+}
+
+# 時間速度倍率（1.0 為實際速度）
+TIME_SCALE = 1  # 可調整為 0.25 ～ 5.0
+
 # -------------------------
-# 測試指定模型的表現
+# 測試指定模型表現
 # -------------------------
 def evaluate_model(path):
     env = BabyPongEnv(**cfg['env'])
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
-
     model = QNet(state_dim, action_dim)
+
     checkpoint = torch.load(path)
     model.load_state_dict(checkpoint['model'])
     model.eval()
@@ -41,25 +54,34 @@ def evaluate_model(path):
     font = None
     if render:
         pygame.font.init()
-        font = pygame.font.SysFont("Arial", 24)
+        font = pygame.font.SysFont(THEME['font'], THEME['font_size'])
 
     for ep in range(episodes):
         state, _ = env.reset()
         done = False
         total_reward = 0
+        frame = 0
 
         while not done:
             if render:
                 env.render()
-                reward_surface = font.render(f"Reward: {total_reward:.2f}", True, (255, 255, 0))
+                # 擷取視窗並繪製額外資訊
+                reward_surface = font.render(f"Episode {ep+1} | Reward: {total_reward:.2f}", True, THEME['text'])
+                speed_now = np.linalg.norm([env.ball_vx, env.ball_vy])
+                base_speed = cfg['env']['base_speed']
+                speed_ratio = speed_now / base_speed
+                speed_surface = font.render(f"Speed: {speed_now:.3f} ({speed_ratio:.1f}x)", True, THEME['text'])
+                
                 env.screen.blit(reward_surface, (10, 10))
+                env.screen.blit(speed_surface, (10, 35))
                 pygame.display.update()
-                time.sleep(0.03)
+                time.sleep(0.03 / TIME_SCALE)
 
             with torch.no_grad():
                 action = model(torch.tensor(state, dtype=torch.float32)).argmax().item()
             state, reward, done, _, _ = env.step(action)
             total_reward += reward
+            frame += 1
 
         total_rewards.append(total_reward)
         print(f"Episode {ep+1}: Reward = {total_reward:.2f}")

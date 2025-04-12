@@ -127,7 +127,7 @@ for episode in range(start_episode, start_episode + cfg['train']['episodes']):
     # 儲存模型
     if (episode + 1) % cfg['train']['save_every'] == 0:
         timestamp = time.strftime("%Y%m%d_%H%M%S")
-        model_path = f"checkpoints/model_ep{episode}_{timestamp}.pth"
+        model_path = f"checkpoints/model_ep{episode}.pth"
         torch.save({
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
