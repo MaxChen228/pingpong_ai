@@ -1,9 +1,11 @@
+# baby_pong_env.py - 支援旋轉視覺化與球厚度碰撞處理
+
 import gym
 from gym import spaces
 import numpy as np
 import pygame
 import matplotlib.pyplot as plt
-import random  # 新增：用來決定球的初始角度
+import random
 
 class BabyPongBounceEnv(gym.Env):
     def __init__(self,
@@ -18,7 +20,9 @@ class BabyPongBounceEnv(gym.Env):
                  speed_scale_every=3,
                  paddle_speed=0.03,
                  paddle_width=60,
-                 render_size=400):
+                 render_size=400,
+                 enable_spin=True,
+                 magnus_factor=0.01):
         super(BabyPongBounceEnv, self).__init__()
 
         self.move_penalty = move_penalty
@@ -35,7 +39,12 @@ class BabyPongBounceEnv(gym.Env):
 
         self.window_size = render_size
         self.paddle_width = paddle_width
+        self.paddle_height = 10  # 擋板厚度
         self.ball_radius = 10
+
+        self.enable_spin = enable_spin
+        self.magnus_factor = magnus_factor
+
         self._init_pygame()
 
         low = np.array([0, 0, -1, -1, 0], dtype=np.float32)
@@ -55,11 +64,13 @@ class BabyPongBounceEnv(gym.Env):
         self.ball_x = np.random.rand()
         self.ball_y = 0.5
 
-        # 加入：以隨機角度產生初始速度方向
-        angle = random.uniform(-np.pi / 4, np.pi / 4)  # 介於 -45 到 45 度
-        direction = random.choice([-1, 1])  # 垂直方向向上或向下
+        angle = random.uniform(-np.pi / 4, np.pi / 4)
+        direction = random.choice([-1, 1])
         self.ball_vx = self.base_speed * np.sin(angle)
         self.ball_vy = self.base_speed * np.cos(angle) * direction
+
+        self.spin = 0.0
+        self.spin_angle = 0.0
 
         self.paddle_x = 0.5
         self.bounces = 0
@@ -91,6 +102,10 @@ class BabyPongBounceEnv(gym.Env):
             self.paddle_x += self.paddle_speed
         self.paddle_x = np.clip(self.paddle_x, 0.0, 1.0)
 
+        # Magnus effect
+        if self.enable_spin:
+            self.ball_vx += self.magnus_factor * self.spin * self.ball_vy
+
         self.ball_x += self.ball_vx
         self.ball_y += self.ball_vy
 
@@ -99,13 +114,21 @@ class BabyPongBounceEnv(gym.Env):
         if self.ball_y >= 1.0:
             self.ball_vy *= -1
 
-        if self.ball_y <= 0.0:
-            delta = abs(self.ball_x - self.paddle_x)
-            if delta < 0.1:
+        # 球底部碰撞 + 考慮球半徑與板厚度
+        collision_y = self.ball_y <= (self.paddle_height / self.window_size)
+        if collision_y:
+            paddle_min = self.paddle_x - (self.paddle_width / self.window_size) / 2
+            paddle_max = self.paddle_x + (self.paddle_width / self.window_size) / 2
+            if paddle_min <= self.ball_x <= paddle_max:
+                self.ball_y = self.paddle_height / self.window_size  # 碰撞修正
                 self.ball_vy *= -1
                 reward += self.bounce_reward
-                if delta < 0.02:
+
+                self.spin = (self.ball_x - self.paddle_x) * 20
+
+                if abs(self.ball_x - self.paddle_x) < 0.02:
                     reward += self.perfect_hit_bonus
+
                 self.bounces += 1
                 self._scale_difficulty()
             else:
@@ -120,14 +143,22 @@ class BabyPongBounceEnv(gym.Env):
 
     def render(self):
         self.screen.fill((30, 30, 30))
-        ball_px = int(self.ball_x * self.window_size)
-        ball_py = int((1 - self.ball_y) * self.window_size)
+        cx = int(self.ball_x * self.window_size)
+        cy = int((1 - self.ball_y) * self.window_size)
         paddle_px = int(self.paddle_x * self.window_size)
 
-        pygame.draw.circle(self.screen, (255, 0, 0), (ball_px, ball_py), self.ball_radius)
+        pygame.draw.circle(self.screen, (255, 0, 0), (cx, cy), self.ball_radius)
+
+        # 球紋路旋轉線條
+        self.spin_angle += self.spin
+        r = self.ball_radius - 2
+        end_x = int(cx + r * np.cos(self.spin_angle))
+        end_y = int(cy + r * np.sin(self.spin_angle))
+        pygame.draw.line(self.screen, (255, 255, 255), (cx, cy), (end_x, end_y), 2)
+
         pygame.draw.rect(self.screen, (0, 255, 0), (paddle_px - self.paddle_width // 2,
-                                                    self.window_size - 20,
-                                                    self.paddle_width, 10))
+                                                    self.window_size - self.paddle_height,
+                                                    self.paddle_width, self.paddle_height))
         pygame.display.flip()
         self.clock.tick(60)
 

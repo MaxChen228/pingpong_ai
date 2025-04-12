@@ -1,4 +1,4 @@
-# test_model.py - 測試模型並以更美觀、可調的視窗顯示
+# test_model.py - 顯示旋轉球的可視化版本
 
 import os
 import sys
@@ -26,15 +26,14 @@ episodes = test_cfg['episodes']
 
 # 可視化樣式設定
 THEME = {
-    "bg": (20, 20, 30),            # 背景色
-    "ball": (255, 100, 100),        # 球顏色
-    "paddle": (100, 255, 100),      # 擋板顏色
-    "text": (255, 255, 100),        # 文字顏色
+    "bg": (20, 20, 30),
+    "ball": (255, 100, 100),
+    "paddle": (100, 255, 100),
+    "text": (255, 255, 100),
     "font": "Courier New",
     "font_size": 20
 }
 
-# 時間速度倍率（1.0 為實際速度）
 TIME_SCALE = 1  # 可調整為 0.25 ～ 5.0
 
 # -------------------------
@@ -61,19 +60,27 @@ def evaluate_model(path):
         done = False
         total_reward = 0
         frame = 0
+        spin_history = []
 
         while not done:
             if render:
                 env.render()
-                # 擷取視窗並繪製額外資訊
+
+                # 文字資訊顯示
                 reward_surface = font.render(f"Episode {ep+1} | Reward: {total_reward:.2f}", True, THEME['text'])
                 speed_now = np.linalg.norm([env.ball_vx, env.ball_vy])
                 base_speed = cfg['env']['base_speed']
                 speed_ratio = speed_now / base_speed
                 speed_surface = font.render(f"Speed: {speed_now:.3f} ({speed_ratio:.1f}x)", True, THEME['text'])
-                
+
                 env.screen.blit(reward_surface, (10, 10))
                 env.screen.blit(speed_surface, (10, 35))
+
+                # 旋轉視覺化：畫圓弧箭頭表示旋轉方向與強度
+                spin = getattr(env, 'spin', 0.0)
+                spin_text = font.render(f"Spin: {spin:+.2f}", True, THEME['text'])
+                env.screen.blit(spin_text, (10, 60))
+
                 pygame.display.update()
                 time.sleep(0.03 / TIME_SCALE)
 

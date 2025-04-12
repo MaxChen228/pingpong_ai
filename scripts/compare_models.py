@@ -22,14 +22,12 @@ with open("config.yaml", "r") as f:
 # 設定要比較的模型檔案清單
 # -------------------------
 model_files = [
-    "checkpoints/model_ep399.pth",
-    "checkpoints/model_ep799.pth",
-    "checkpoints/model_ep1199.pth",
-    "checkpoints/model_ep1599.pth",
+    "checkpoints/model_traget_ep199.pth",
+    "checkpoints/model_traget_ep399.pth",
+    "checkpoints/model_traget_ep599.pth",
+    "checkpoints/model_traget_ep799.pth",
+    "checkpoints/model_traget_ep999.pth",
     "checkpoints/model_ep1799.pth",
-    "checkpoints/model_ep1999.pth",
-    "checkpoints/model_ep2199.pth",
-    "checkpoints/model_ep2399.pth",
     "checkpoints/model_ep2499.pth",
     "checkpoints/model_ep2999.pth"
 ]
@@ -37,7 +35,7 @@ model_files = [
 # -------------------------
 # 測試每個模型表現
 # -------------------------
-def evaluate_model(path, episodes=300):
+def evaluate_model(path, episodes=100000000):
     env = BabyPongEnv(**cfg['env'])
     state_dim = env.observation_space.shape[0]
     action_dim = env.action_space.n
