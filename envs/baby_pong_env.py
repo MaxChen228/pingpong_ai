@@ -47,8 +47,8 @@ class BabyPongBounceEnv(gym.Env):
 
         self._init_pygame()
 
-        low = np.array([0, 0, -1, -1, 0], dtype=np.float32)
-        high = np.array([1, 1, 1, 1, 1], dtype=np.float32)
+        low = np.array([0, 0, -1, -1, 0, -5], dtype=np.float32)
+        high = np.array([1, 1, 1, 1, 1, 5], dtype=np.float32)
         self.observation_space = spaces.Box(low, high, dtype=np.float32)
         self.action_space = spaces.Discrete(3)
 
@@ -64,17 +64,19 @@ class BabyPongBounceEnv(gym.Env):
         self.ball_x = np.random.rand()
         self.ball_y = 0.5
 
-        angle = random.uniform(-np.pi / 4, np.pi / 4)
+        angle = random.uniform(-np.pi / 2.5, np.pi / 2.5)  # 擴大角度範圍
+        speed = random.uniform(self.base_speed * 0.5, self.base_speed * 2.5)  # 隨機速度
         direction = random.choice([-1, 1])
-        self.ball_vx = self.base_speed * np.sin(angle)
-        self.ball_vy = self.base_speed * np.cos(angle) * direction
+        self.ball_vx = speed * np.sin(angle)
+        self.ball_vy = speed * np.cos(angle) * direction
 
-        self.spin = 0.0
+        self.spin = random.uniform(-3, 3)  # 加入隨機轉速
         self.spin_angle = 0.0
 
         self.paddle_x = 0.5
         self.bounces = 0
         return self._get_obs(), {}
+
 
     def _get_obs(self):
         return np.array([
@@ -82,8 +84,10 @@ class BabyPongBounceEnv(gym.Env):
             self.ball_y,
             self.ball_vx,
             self.ball_vy,
-            self.paddle_x
+            self.paddle_x,
+            self.spin  # 新增轉速
         ], dtype=np.float32)
+
 
     def _scale_difficulty(self):
         scale_factor = 1 + (self.bounces // self.speed_scale_every) * self.speed_increment

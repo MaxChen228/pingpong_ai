@@ -1,5 +1,3 @@
-# train_dqn.py 完整代碼 - 使用 Target Network 改進 DQN (完整註解版)
-
 import pygame
 import sys
 import os
@@ -50,6 +48,7 @@ optimizer = optim.Adam(model.parameters(), lr=cfg['train']['lr'])
 memory = deque(maxlen=cfg['train']['memory_size'])  # 經驗回放記憶庫
 epsilon = 1.0  # ε-greedy探索初始值
 rewards = []
+losses = []
 start_episode = 0
 writer = SummaryWriter(log_dir="runs/baby_pong")
 target_update_freq = cfg['train'].get('target_update_freq', 10)  # 目標網路更新頻率
@@ -69,41 +68,36 @@ else:
 # 訓練函數，使用batch更新模型
 
 def train():
-    # 確認記憶庫中有足夠樣本
     if len(memory) < cfg['train']['batch_size']:
         return
 
-    # 從記憶庫中隨機抽取batch
     batch = random.sample(memory, cfg['train']['batch_size'])
     states, actions, rewards_, next_states, dones = zip(*batch)
 
-    # 轉換成tensor
     states = torch.tensor(np.array(states), dtype=torch.float32)
     next_states = torch.tensor(np.array(next_states), dtype=torch.float32)
     actions = torch.tensor(actions, dtype=torch.int64)
     rewards_ = torch.tensor(rewards_, dtype=torch.float32)
     dones = torch.tensor(dones, dtype=torch.bool)
 
-    # 計算當前狀態的Q值
     q_values = model(states)
-    # 使用目標模型計算下一狀態的Q值（固定目標）
     with torch.no_grad():
         next_q_values = target_model(next_states)
         next_q_value = next_q_values.max(1)[0]
 
-    # 依照實際採取的行動取得預測Q值
     q_value = q_values.gather(1, actions.unsqueeze(1)).squeeze(1)
-    # 計算目標Q值（基於Bellman方程）
     expected_q = rewards_ + cfg['train']['gamma'] * next_q_value * (~dones)
 
-    # 計算損失函數
     loss = nn.MSELoss()(q_value, expected_q)
     writer.add_scalar("Loss", loss.item(), len(rewards))
+    losses.append(loss.item())
 
-    # 更新模型參數
     optimizer.zero_grad()
     loss.backward()
     optimizer.step()
+
+# 建立存圖資料夾
+os.makedirs("plot", exist_ok=True)
 
 # 主訓練迴圈
 for episode in range(start_episode, start_episode + cfg['train']['episodes']):
@@ -112,14 +106,12 @@ for episode in range(start_episode, start_episode + cfg['train']['episodes']):
     done = False
 
     while not done:
-        # ε-greedy策略
         if random.random() < epsilon:
             action = env.action_space.sample()
         else:
             with torch.no_grad():
                 action = model(torch.tensor(state, dtype=torch.float32)).argmax().item()
 
-        # 執行動作，獲取下一狀態和獎勵
         next_state, reward, done, _, _ = env.step(action)
         memory.append((state, action, reward, next_state, done))
         train()
@@ -131,14 +123,12 @@ for episode in range(start_episode, start_episode + cfg['train']['episodes']):
     writer.add_scalar("Epsilon", epsilon, episode)
     epsilon = max(cfg['train']['min_epsilon'], epsilon * cfg['train']['epsilon_decay'])
 
-    # 定期更新目標網路
     if (episode + 1) % target_update_freq == 0:
         target_model.load_state_dict(model.state_dict())
         print(f"🔄 Updated target network at episode {episode}")
 
-    # 定期儲存模型
     if (episode + 1) % cfg['train']['save_every'] == 0:
-        model_path = f"checkpoints/model_traget_ep{episode}.pth"
+        model_path = f"checkpoints/model_traget2_ep{episode}.pth"
         torch.save({
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
@@ -149,16 +139,45 @@ for episode in range(start_episode, start_episode + cfg['train']['episodes']):
 
     print(f"Episode {episode}: Total reward = {total_reward}")
 
-    # 定期渲染環境觀察訓練狀態
     if (episode + 1) % cfg['train']['render_every'] == 0:
         state, _ = env.reset()
         done = False
         while not done:
             env.render()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    print("[警告] 嘗試關閉視窗，但我假裝沒看到。")
+                    # 不退出訓練，只跳過這個事件
+                    continue
             time.sleep(0.05)
             with torch.no_grad():
                 action = model(torch.tensor(state, dtype=torch.float32)).argmax().item()
             state, _, done, _, _ = env.step(action)
+
+# 繪製 reward 與 loss 圖表
+window = 50
+smoothed_rewards = np.convolve(rewards, np.ones(window)/window, mode='valid')
+smoothed_losses = np.convolve(losses, np.ones(window)/window, mode='valid')
+
+plt.figure(figsize=(10, 4))
+plt.subplot(1, 2, 1)
+plt.plot(rewards, alpha=0.3, label='Reward')
+plt.plot(range(window - 1, len(rewards)), smoothed_rewards, label='Smoothed Reward')
+plt.title('Reward over Episodes')
+plt.xlabel('Episode')
+plt.ylabel('Reward')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(losses, alpha=0.3, label='Loss')
+plt.plot(range(window - 1, len(losses)), smoothed_losses, label='Smoothed Loss')
+plt.title('Loss over Episodes')
+plt.xlabel('Episode')
+plt.ylabel('Loss')
+plt.legend()
+
+plt.tight_layout()
+plt.savefig("plot/training_metrics.png")
 
 # 結束環境，關閉資源
 env.close()

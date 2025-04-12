@@ -3,32 +3,31 @@ env:
   center_penalty_weight: 0.02
   bounce_reward: 1.0
   miss_penalty: 1.0
-  perfect_hit_bonus: 0.5
+  perfect_hit_bonus: 0.2
   max_bounces: 100
   base_speed: 0.04
-  speed_increment: 0.005
-  speed_scale_every: 5
+  speed_increment: 0.01
+  speed_scale_every: 10
   paddle_speed: 0.03
   paddle_width: 80
   render_size: 400
   enable_spin: true
-  magnus_factor: 0.03
+  magnus_factor: 0
 
 train:
-  episodes: 1000
+  episodes: 2000
   gamma: 0.995
   lr: 0.0005
   batch_size: 128
   memory_size: 100000
-  epsilon_decay: 0.997
+  epsilon_decay: 0.99
   min_epsilon: 0.05
-  render_every: 10000
-  save_every: 200
-  checkpoint_path: "checkpoints/model_traget_ep799.pth"
-  load_model: true
-
+  render_every: 200
+  save_every: 400
+  checkpoint_path: "checkpoints/model_traget2_ep1199.pth"
+  load_model: false
 
 test:
-  model_path: "checkpoints/model_traget_ep799.pth"
+  model_path: "checkpoints/model_traget2_ep1199.pth"
   render: true
   episodes: 10
