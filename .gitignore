@@ -6,7 +6,7 @@ __pycache__/
 venv/
 
 # 模型檔案與中繼檔
-*.pth
+# *.pth
 # checkpoints/
 runs/
 plots/
