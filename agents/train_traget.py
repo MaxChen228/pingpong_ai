@@ -128,7 +128,7 @@ for episode in range(start_episode, start_episode + cfg['train']['episodes']):
         print(f"🔄 Updated target network at episode {episode}")
 
     if (episode + 1) % cfg['train']['save_every'] == 0:
-        model_path = f"checkpoints/model_traget2_ep{episode}.pth"
+        model_path = f"checkpoints/model_traget3_ep{episode}.pth"
         torch.save({
             'model': model.state_dict(),
             'optimizer': optimizer.state_dict(),
